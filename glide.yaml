@@ -1,0 +1,4 @@
+package: gitlab.trdhub.com/andrexus/echo-utils
+import:
+- package: github.com/labstack/echo
+  version: ^3.1.0
