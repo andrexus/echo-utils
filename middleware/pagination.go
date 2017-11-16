@@ -132,9 +132,14 @@ func PaginationWithConfig(config PaginationConfig) echo.MiddlewareFunc {
 			}
 
 			pageSize := config.PageSizeParameterDefault
-			val, errPageSize := strconv.Atoi(pageSizeParameter)
-			if errPageSize == nil && val >= config.PageSizeParameterMin && val <= config.PageSizeParameterMax {
+			if val, errPageSize := strconv.Atoi(pageSizeParameter); errPageSize == nil {
 				pageSize = val
+				if val < config.PageSizeParameterMin {
+					pageSize = config.PageSizeParameterMin
+				}
+				if val > config.PageSizeParameterMax {
+					pageSize = config.PageSizeParameterMax
+				}
 			}
 
 			filterRequest := &FilterRequest{
