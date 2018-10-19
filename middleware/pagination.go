@@ -36,12 +36,19 @@ type PageRequest struct {
 }
 
 type FilterRequest struct {
-	Filters     []FilterValue
+	Filters     []Filter
 	FilterValue string
 	PageRequest *PageRequest
 }
 
-type FilterValue map[string][]map[string]interface{}
+func (f *FilterRequest) AddFilter(fs Filter) {
+	f.Filters = append(f.Filters, fs)
+}
+
+type Filter struct {
+	Name        string
+	FilterItems []map[string]interface{}
+}
 
 const (
 	pageParameter            = "page"
@@ -116,10 +123,10 @@ func PaginationWithConfig(config PaginationConfig) echo.MiddlewareFunc {
 			pageSizeParameter := queryParams.Get(config.PageSizeParameter)
 			sortParameter := queryParams.Get(config.SortParameter)
 
-			var filters []FilterValue
+			var filters []Filter
 			for queryParamName := range queryParams {
 				if queryParamName == config.FilterParameter {
-					filters = parseFilter(c.QueryParam(queryParamName))
+					filters = parseFilters(c.QueryParam(queryParamName))
 				}
 			}
 
@@ -156,8 +163,16 @@ func PaginationWithConfig(config PaginationConfig) echo.MiddlewareFunc {
 	}
 }
 
-func parseFilter(filter string) []FilterValue {
-	values := make([]FilterValue, 0)
-	json.Unmarshal([]byte(filter), &values)
-	return values
+func parseFilters(filter string) []Filter {
+	filters := make([]Filter, 0)
+	var f []map[string][]map[string]interface{}
+	if err := json.Unmarshal([]byte(filter), &f); err != nil {
+		return filters
+	}
+	for _, filterItem := range f {
+		for k, v := range filterItem {
+			filters = append(filters, Filter{Name: k, FilterItems: v})
+		}
+	}
+	return filters
 }
