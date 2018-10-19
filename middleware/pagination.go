@@ -1,9 +1,8 @@
 package echo_utils
 
 import (
+	"encoding/json"
 	"strconv"
-
-	"strings"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
@@ -25,7 +24,7 @@ type (
 		PageSizeParameterMin     int
 		PageSizeParameterMax     int
 		SortParameter            string
-		FilterParameterPrefix    string
+		FilterParameter          string
 		PaginationContextKey     string
 	}
 )
@@ -37,10 +36,12 @@ type PageRequest struct {
 }
 
 type FilterRequest struct {
-	FilterName  string
+	Filters     []FilterValue
 	FilterValue string
 	PageRequest *PageRequest
 }
+
+type FilterValue map[string][]map[string]interface{}
 
 const (
 	pageParameter            = "page"
@@ -51,7 +52,7 @@ const (
 	pageSizeParameterMin     = 2
 	pageSizeParameterMax     = 1000
 	sortParameter            = "sort"
-	filterParameterPrefix    = "filter."
+	filterParameter          = "filter"
 	paginationContextKey     = "pagination"
 )
 
@@ -67,7 +68,7 @@ var (
 		PageSizeParameterMin:     pageSizeParameterMin,
 		PageSizeParameterMax:     pageSizeParameterMax,
 		SortParameter:            sortParameter,
-		FilterParameterPrefix:    filterParameterPrefix,
+		FilterParameter:          filterParameter,
 		PaginationContextKey:     paginationContextKey,
 	}
 )
@@ -101,8 +102,8 @@ func PaginationWithConfig(config PaginationConfig) echo.MiddlewareFunc {
 	if config.SortParameter == "" {
 		config.SortParameter = sortParameter
 	}
-	if config.FilterParameterPrefix == "" {
-		config.FilterParameterPrefix = filterParameterPrefix
+	if config.FilterParameter == "" {
+		config.FilterParameter = filterParameter
 	}
 	if config.PaginationContextKey == "" {
 		config.PaginationContextKey = paginationContextKey
@@ -115,13 +116,10 @@ func PaginationWithConfig(config PaginationConfig) echo.MiddlewareFunc {
 			pageSizeParameter := queryParams.Get(config.PageSizeParameter)
 			sortParameter := queryParams.Get(config.SortParameter)
 
-			filterName := ""
-			filterValue := ""
+			var filters []FilterValue
 			for queryParamName := range queryParams {
-				queryParamValue := c.QueryParam(queryParamName)
-				if strings.HasPrefix(queryParamName, config.FilterParameterPrefix) {
-					filterName = queryParamName[len(config.FilterParameterPrefix):]
-					filterValue = queryParamValue
+				if queryParamName == config.FilterParameter {
+					filters = parseFilter(c.QueryParam(queryParamName))
 				}
 			}
 
@@ -143,8 +141,7 @@ func PaginationWithConfig(config PaginationConfig) echo.MiddlewareFunc {
 			}
 
 			filterRequest := &FilterRequest{
-				FilterName:  filterName,
-				FilterValue: filterValue,
+				Filters: filters,
 				PageRequest: &PageRequest{
 					Page: page,
 					Size: pageSize,
@@ -157,4 +154,10 @@ func PaginationWithConfig(config PaginationConfig) echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
+}
+
+func parseFilter(filter string) []FilterValue {
+	values := make([]FilterValue, 0)
+	json.Unmarshal([]byte(filter), &values)
+	return values
 }
