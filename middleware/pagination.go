@@ -37,12 +37,20 @@ type PageRequest struct {
 
 type FilterRequest struct {
 	Filters     []Filter
-	FilterValue string
 	PageRequest *PageRequest
 }
 
 func (f *FilterRequest) AddFilter(fs Filter) {
 	f.Filters = append(f.Filters, fs)
+}
+
+func (f *FilterRequest) GetFilterByName(name string) *Filter {
+	for _, filter := range f.Filters {
+		if filter.Name == name {
+			return &filter
+		}
+	}
+	return nil
 }
 
 type Filter struct {
